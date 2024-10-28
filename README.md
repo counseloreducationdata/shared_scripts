@@ -1,1 +1,1 @@
-# shared_scripts
+Repo with scripts shared across other repos.
