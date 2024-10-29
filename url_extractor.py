@@ -47,39 +47,50 @@ def extract_urls(text):
     # Find all URLs in the input text
     extracted_urls = re.findall(url_pattern, text, re.IGNORECASE)
 
-    # # If any of the extracted URLs end with a punctuation mark or other unwanted symbol, remove it
-    # extracted_urls = [re.sub(r'[.,!?;)\]]$', '', url) for url in extracted_urls]
+    # This code block processes a list of URLs, splitting each URL based on specific patterns 
+    # ('http://', 'https://', 'www.', or 'ftp://') and reconstructing them to ensure they are 
+    # properly formatted. The resulting list of split URLs is then updated in the extracted_urls list.
+    # Initialize an empty list to store the split URLs
+    split_urls = []
+    # Iterate over each URL in the extracted_urls list
+    for url in extracted_urls:
+        # Split the URL using the specified regular expression pattern
+        # The pattern matches 'http://', 'https://', 'www.', or 'ftp://'
+        parts = re.split(r'(https?://|www\.|ftp://)', url)
+        # Check if the URL was split into multiple parts
+        if len(parts) > 1:
+            # Iterate over the parts, skipping every other part (the separators)
+            for i in range(1, len(parts), 2):
+                # Combine the separator and the following part, and add to split_urls
+                split_urls.append(parts[i] + parts[i + 1])
+        else:
+            # If the URL was not split, add it as is to split_urls
+            split_urls.append(url)
+    # Update the extracted_urls list with the split URLs
+    extracted_urls = split_urls
 
     # Clean for unwanted characters at the end
     # A problem is if the URL actually ends with any of these
-    unwanted_chars = {'.', ',', '!', '?', ';', ')', ']'}
+    unwanted_chars = {'.', ',', '!', '?', ';', ')', ']', ':', ">:", ">.", ">,", ">;" ">!", ">?", ">)", ">]", ">}", "/>", ">", "<", "/"}
     extracted_urls = [url.rstrip(''.join(unwanted_chars)) for url in extracted_urls]
 
-    # If any of the extracted URLs doesn't include a valid domain, remove it
+    # If any of the extracted URLs doesn't include a valid domain or other keyword, remove it
     # TODO: check with Gideon
-    # valid_domains = ['.com', '.edu', '.org', '.net', '.gov', '.int', '.mil']
-    valid_domains = ['.edu']
-    extracted_urls = [url for url in extracted_urls if any(domain in url.lower() for domain in valid_domains)]
+    valid_domains_or_keywords = ['.edu', 'schooljobs', 'workday', 'indeed', 'interfolio', 'pageuppeople', 'applicantpro', 'csod', 'bamboohr', 'peopleadmin', 'ultipro', 'workforcenow', 'job', 'posting', 'apply']
+    extracted_urls = [url for url in extracted_urls if any(domain in url.lower() for domain in valid_domains_or_keywords)]
 
-    # If there are any of the common valid_domains followed immediately by http, https, www, or ftp (or with a comma in between), split the string between the valid domain and the http, https, www, or ftp and keep both URLs
-    # This only works for two URLs in the string, it fails with three
-    for domain in valid_domains:
-        for url in extracted_urls:
-            if domain in url:
-                split_part = url.split(domain)[1]
-                if split_part.startswith(('http://', 'https://', 'www.', 'ftp://', ',')):
-                    extracted_urls[extracted_urls.index(url)] = url.split(domain)[0] + domain
-                    extracted_urls.append(split_part.lstrip(',') + domain)
-
-    # If the extracted URL starts with 'www', add 'http://' to the beginning
-    # Is this correct? Or should it be https instead?
-    extracted_urls = ['http://' + url if url.startswith('www.') else url for url in extracted_urls]
+    # If the extracted URL starts with 'www', add 'https://' to the beginning
+    # Is this correct? Does it work with all URLs?
+    extracted_urls = ['https://' + url if url.startswith('www.') else url for url in extracted_urls]
 
     # Include only valid URLs
     extracted_urls = [url for url in extracted_urls if is_valid_url(url)]
 
     # Exclude URLs that include listserv.kent.edu
     extracted_urls = [url for url in extracted_urls if 'listserv.kent.edu' not in url]
+
+    # Remove any duplicate URLs, keeping the original order of the list
+    extracted_urls = list(dict.fromkeys(extracted_urls))
 
     # Return the list of extracted URLs
     return extracted_urls
@@ -1255,31 +1266,31 @@ if __name__ == '__main__':
     # Case 5: Test with a URL starting with 'www'
     print("Case 5")
     print(extract_urls('Go to www.example.edu for more info.'))
-    assert extract_urls('Go to www.example.edu for more info.') == ['http://www.example.edu']
+    assert extract_urls('Go to www.example.edu for more info.') == ['https://www.example.edu']
     print("Case 5 passed.")
 
     # Case 6: Test with multiple URLs in one string
     print("Case 6")
     print(extract_urls('Check these: http://example.edu, https://example.edu, www.example.edu'))
-    assert extract_urls('Check these: http://example.edu, https://example.edu, www.example.edu') == ['http://example.edu', 'https://example.edu', 'http://www.example.edu']
+    assert extract_urls('Check these: http://example.edu, https://example.edu, www.example.edu') == ['http://example.edu', 'https://example.edu', 'https://www.example.edu']
     print("Case 6 passed.")
 
     # Case 7: Test with URLs followed by punctuation
     print("Case 7")
     print(extract_urls('Visit www.example.edu! Or check out https://example.edu, for updates.'))
-    assert extract_urls('Visit www.example.edu! Or check out https://example.edu, for updates.') == ['http://www.example.edu', 'https://example.edu']
+    assert extract_urls('Visit www.example.edu! Or check out https://example.edu, for updates.') == ['https://www.example.edu', 'https://example.edu']
     print("Case 7 passed.")
 
     # Case 8: Test with URLs ending in different domains
     print("Case 8")
     print(extract_urls('Visit http://example.edu and http://example.edu for details.'))
-    assert extract_urls('Visit http://example.edu and http://example.edu for details.') == ['http://example.edu', 'http://example.edu']
+    assert extract_urls('Visit http://example.edu and http://example.edu for details.') == ['http://example.edu']
     print("Case 8 passed.")
 
     # Case 9: Test with URLs ending with a slash
     print("Case 9")
     print(extract_urls('Check https://example.edu/ for the homepage.'))
-    assert extract_urls('Check https://example.edu/ for the homepage.') == ['https://example.edu/']
+    assert extract_urls('Check https://example.edu/ for the homepage.') == ['https://example.edu']
     print("Case 9 passed.")
 
     # Case 10: Test with mixed case URLs
@@ -1361,7 +1372,7 @@ if __name__ == '__main__':
     # Case 22: Test with URLs without HTTP/HTTPS scheme
     print("Case 22")
     print(extract_urls('Go to www.example.edu'))
-    assert extract_urls('Go to www.example.edu') == ['http://www.example.edu']
+    assert extract_urls('Go to www.example.edu') == ['https://www.example.edu']
     print("Case 22 passed.")
 
     # Case 23: Test with URL containing query parameters
@@ -1481,7 +1492,7 @@ if __name__ == '__main__':
     # Case 43: Test with a URL without http/https scheme
     print("Case 43")
     print(extract_urls('Visit www.example.edu for details.'))
-    assert extract_urls('Visit www.example.edu for details.') == ["http://www.example.edu"]
+    assert extract_urls('Visit www.example.edu for details.') == ["https://www.example.edu"]
     print("Case 43 passed.")
 
     # Case 44: Test with a malformed URL (missing domain)
@@ -1555,7 +1566,7 @@ if __name__ == '__main__':
     # Case 55: Test URL with www and no scheme
     print("Case 55")
     print(extract_urls('Visit www.example.edu for more info'))
-    assert extract_urls('Visit www.example.edu for more info') == ['http://www.example.edu']
+    assert extract_urls('Visit www.example.edu for more info') == ['https://www.example.edu']
     print("Case 55 passed.")
 
     # Case 56: Test URL with special characters in the query string
@@ -1711,7 +1722,7 @@ if __name__ == '__main__':
     # Case 84: Test with www URL without protocol
     print("Case 84")
     print(extract_urls('Visit www.example.edu for more information'))
-    assert extract_urls('Visit www.example.edu for more information') == ['http://www.example.edu']
+    assert extract_urls('Visit www.example.edu for more information') == ['https://www.example.edu']
     print("Case 84 passed.")
 
     # Case 85: Test with a URL that includes query parameters
@@ -1849,7 +1860,7 @@ if __name__ == '__main__':
     # Case 109: Test with a URL missing the protocol
     print("Case 109")
     print(extract_urls('www.example.edu/path/to/page'))
-    assert extract_urls('www.example.edu/path/to/page') == ['http://www.example.edu/path/to/page']
+    assert extract_urls('www.example.edu/path/to/page') == ['https://www.example.edu/path/to/page']
     print("Case 109 passed.")
 
     # Case 110: Test with a malformed URL (missing TLD)
@@ -1862,6 +1873,12 @@ if __name__ == '__main__':
     print("Case 111")
     print(extract_urls('Visit http://example.edu,https://another.edu'))
     assert extract_urls('Visit http://example.edu,https://another.edu') == ['http://example.edu', 'https://another.edu']
+    print("Case 111 passed.")
+
+    # Case 112: Test with multiple URLs separated by commas (three in this case)
+    print("Case 111")
+    print(extract_urls('Visit http://example.edu,https://another.edu,https://yetanother.edu'))
+    assert extract_urls('Visit http://example.edu,https://another.edu,https://yetanother.edu') == ['http://example.edu', 'https://another.edu', 'https://yetanother.edu']
     print("Case 111 passed.")
 
     # Case 113: Test with a URL containing port number
@@ -1891,7 +1908,7 @@ if __name__ == '__main__':
     # Case 118: Test with a URL missing the protocol but prefixed with a space
     print("Case 118")
     print(extract_urls(' Go to www.example.edu for more'))
-    assert extract_urls(' Go to www.example.edu for more') == ["http://www.example.edu"]
+    assert extract_urls(' Go to www.example.edu for more') == ["https://www.example.edu"]
     print("Case 118 passed.")
 
     # Case 119: Test with a URL with a long subdomain
@@ -2031,7 +2048,7 @@ if __name__ == '__main__':
     # Case 144: Test with a URL in a sentence without protocol (http)
     print("Case 144")
     print(extract_urls('Visit www.example.edu for more info.'))
-    assert extract_urls('Visit www.example.edu for more info.') == ["http://www.example.edu"]
+    assert extract_urls('Visit www.example.edu for more info.') == ["https://www.example.edu"]
     print("Case 144 passed.")
 
     # Case 145: Test with URL including subdomain
@@ -2085,7 +2102,7 @@ if __name__ == '__main__':
     # Case 154: Test with a URL that doesn't have a protocol
     print("Case 154")
     print(extract_urls('Visit www.example.edu'))
-    assert extract_urls('Visit www.example.edu') == ["http://www.example.edu"]
+    assert extract_urls('Visit www.example.edu') == ["https://www.example.edu"]
     print("Case 154 passed.")
 
     # Case 155: Test with a URL with different protocol (ftp)
@@ -2271,7 +2288,7 @@ if __name__ == '__main__':
     # Case 190: Test with a URL starting with www and no scheme
     print("Case 190")
     print(extract_urls('Visit www.example.edu'))
-    assert extract_urls('Visit www.example.edu') == ["http://www.example.edu"]
+    assert extract_urls('Visit www.example.edu') == ["https://www.example.edu"]
     print("Case 190 passed.")
 
     # Case 191: Test with a URL containing a port number
@@ -2327,5 +2344,85 @@ if __name__ == '__main__':
     print(extract_urls("To unsubscribe from the CESNET-L list, click the following link:\nhttps://listserv.kent.edu/cgi-bin/wa.exe?SUBED1=CESNET-L&A=1"))
     assert extract_urls("To unsubscribe from the CESNET-L list, click the following link:\nhttps://listserv.kent.edu/cgi-bin/wa.exe?SUBED1=CESNET-L&A=1") == []
     print("Case 199 passed.")
+
+    # Test cases generated from exploring the data
+
+    # Case 200: ends in >
+    print("Case 200")
+    print(extract_urls("Our Common Ground Values<https://www.uvm.edu/president/our-common-ground> and ad"))
+    assert extract_urls("Our Common Ground Values<https://www.uvm.edu/president/our-common-ground> and ad") == ['https://www.uvm.edu/president/our-common-ground']
+    print("Case 200 passed.")
+
+    # Case 201: ends in >:
+    print("Case 201")
+    print(extract_urls("Our Common Ground Values<https://www.uvm.edu/president/our-common-ground>: and ad"))
+    assert extract_urls("Our Common Ground Values<https://www.uvm.edu/president/our-common-ground>: and ad") == ['https://www.uvm.edu/president/our-common-ground']
+    print("Case 201 passed.")
+
+    # Case 202: workday URL
+    print("Case 202")
+    print(extract_urls("https://wd5.myworkday.com/"))
+    assert extract_urls("https://wd5.myworkday.com/") == ['https://wd5.myworkday.com']
+    print("Case 202 passed.")
+
+    # Case 203: indeed
+    print("Case 203")
+    print(extract_urls("https://www.indeed.com/"))
+    assert extract_urls("https://www.indeed.com/") == ['https://www.indeed.com']
+    print("Case 203 passed.")
+
+    # Case 204: job
+    print("Case 204")
+    print(extract_urls("https://jobs.uvmhealth.org/"))
+    assert extract_urls("https://jobs.uvmhealth.org/") == ['https://jobs.uvmhealth.org']
+    print("Case 204 passed.")
+
+    # Case 205: www.alfred.edu<http://www.alfred.edu/>
+    print("Case 205")
+    print(extract_urls("www.alfred.edu<http://www.alfred.edu/>"))
+    assert extract_urls("www.alfred.edu<http://www.alfred.edu/>") == ['https://www.alfred.edu']
+    print("Case 205 passed.")
+
+    # Case 206: https://jobs.oregonstate.edu/postings/159109<https://apptrkr.com/5599216>
+    print("Case 206")
+    print(extract_urls("https://jobs.oregonstate.edu/postings/159109<https://apptrkr.com/5599216>"))
+    assert extract_urls("https://jobs.oregonstate.edu/postings/159109<https://apptrkr.com/5599216>") == ['https://jobs.oregonstate.edu/postings/159109']
+    print("Case 206 passed.")
+
+    # Case 207: http://www.stmarytx.edu/about<http://www.stmarytx.edu/about>
+    print("Case 207")
+    print(extract_urls("http://www.stmarytx.edu/about<http://www.stmarytx.edu/about>"))
+    assert extract_urls("http://www.stmarytx.edu/about<http://www.stmarytx.edu/about>") == ['https://www.stmarytx.edu/about']
+    print("Case 207 passed.")
+
+    # Case 208: https://jobs.oregonstate.edu/postings/159109<https://apptrkr.com/5599216>
+    print("Case 208")
+    print(extract_urls("https://jobs.oregonstate.edu/postings/159109<https://apptrkr.com/5599216>"))
+    assert extract_urls("https://jobs.oregonstate.edu/postings/159109<https://apptrkr.com/5599216>") == ['https://jobs.oregonstate.edu/postings/159109']
+    print("Case 208 passed.")
+
+    # Case 209: http://www.uvm.edu/cess<http://www.uvm.edu/cess>
+    print("Case 209")
+    print(extract_urls("http://www.uvm.edu/cess<http://www.uvm.edu/cess>"))
+    assert extract_urls("http://www.uvm.edu/cess<http://www.uvm.edu/cess>") == ['https://www.uvm.edu/cess']
+    print("Case 209 passed.")
+
+    # Casw 210: http://www.uvm.edu<http://www.uvm.edu/>
+    print("Case 210")
+    print(extract_urls("http://www.uvm.edu<http://www.uvm.edu/>"))
+    assert extract_urls("http://www.uvm.edu<http://www.uvm.edu/>") == ['https://www.uvm.edu']
+    print("Case 210 passed.")
+
+    # Case 211: https://www.sacredheart.edu/offices--departments-directory/human-resources/job-postings/) 
+    print("Case 211")
+    print(extract_urls("https://www.sacredheart.edu/offices--departments-directory/human-resources/job-postings/)"))
+    assert extract_urls("https://www.sacredheart.edu/offices--departments-directory/human-resources/job-postings/)") == ['https://www.sacredheart.edu/offices--departments-directory/human-resources/job-postings']
+    print("Case 211 passed.")
+
+    # Case 212: uld be uploaded to https://jobs.kent.edu/: (1) a co
+    print("Case 212")
+    print(extract_urls("uld be uploaded to https://jobs.kent.edu/: (1) a co"))
+    assert extract_urls("uld be uploaded to https://jobs.kent.edu/: (1) a co") == ['https://jobs.kent.edu']
+    print("Case 212 passed.")
 
     print("All test cases passed!")
