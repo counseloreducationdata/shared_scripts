@@ -75,8 +75,8 @@ def extract_urls(text):
     extracted_urls = [url.rstrip(''.join(unwanted_chars)) for url in extracted_urls]
 
     # If any of the extracted URLs doesn't include a valid domain or other keyword, remove it
-    # TODO: check with Gideon whether to add .edu
-    valid_domains_or_keywords = ['schooljobs', 'workday', 'indeed', 'interfolio', 'pageuppeople', 'applicantpro', 'csod', 'bamboohr', 'peopleadmin', 'ultipro', 'workforcenow', 'linkedin', 'job', 'posting', 'apply']
+    # TODO: check with Gideon
+    valid_domains_or_keywords = ['.edu', 'schooljobs', 'workday', 'indeed', 'interfolio', 'pageuppeople', 'applicantpro', 'csod', 'bamboohr', 'peopleadmin', 'ultipro', 'workforcenow', 'linkedin', 'job', 'posting', 'apply']
     extracted_urls = [url for url in extracted_urls if any(domain in url.lower() for domain in valid_domains_or_keywords)]
 
     # If the extracted URL starts with 'www', add 'https://' to the beginning
